@@ -46,3 +46,56 @@ V ≈ V_caja · (dentro / N).
 resultado analítico y guarda los resultados en un fichero. Representa el error frente a N en
 escala log-log para los dos casos, usando Excel.
 */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <locale.h>
+#include <time.h>
+#define LIMITE 4
+
+typedef struct punto_t{
+	double x;
+	double y;
+	double z;
+}punto_t;
+
+double generarNumeroAzar(double limInf, double limSup);
+punto_t generarPunto(double limInf_X, double limSup_X, double limInf_Y, double limSup_Y, double limInf_Z, double limSup_Z);
+int main(int argc, char** argv){
+	
+	//Inicializamos la semilla
+	srand(time(0));
+	
+	//Para el csv
+	#ifdef _WIN32
+		setlocale(LC_NUMERIC, "Spanish");
+	#else
+		setlocale(LC_NUMERIC, "es_ES.UTF-8");
+	#endif
+	
+	//Pruebas
+	punto_t punto = generarPunto(-LIMITE, LIMITE, -1, 1, -1, 1);
+	printf("x: %lf\t, y: %lf\t, z: %lf\n", punto.x, punto.y, punto.z);
+	
+	
+}
+
+double generarNumeroAzar(double limInf, double limSup){
+	double randLocal = 0.0f;
+	randLocal = rand();
+	
+	return ((randLocal / RAND_MAX) * (limSup - limInf) + limInf);
+}
+
+punto_t generarPunto(double limInf_X, double limSup_X, double limInf_Y, double limSup_Y, double limInf_Z, double limSup_Z){
+	
+	//Generamos un punto con las especificaciones recibidas
+	punto_t punto;
+	punto.x = generarNumeroAzar(limInf_X, limSup_X);
+	punto.y = generarNumeroAzar(limInf_Y, limSup_Y);
+	punto.z = generarNumeroAzar(limInf_Z, limSup_Z);
+	
+	//Devolvemos el punto
+	return punto;
+}
