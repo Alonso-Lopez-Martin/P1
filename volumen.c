@@ -52,7 +52,7 @@ escala log-log para los dos casos, usando Excel.
 #include <math.h>
 #include <locale.h>
 #include <time.h>
-#define LIMITE 4
+#define LIMITE 4.0
 
 typedef struct punto_t{
 	double x;
@@ -60,8 +60,23 @@ typedef struct punto_t{
 	double z;
 }punto_t;
 
+typedef struct caja_t{
+	double limX [2];
+	double limY [2];
+	double limZ [2];
+	double volumen;
+}caja_t;
+
+typedef enum limites_e{
+	LIMITE_INF, LIMITE_SUP
+}limites_e;
+
 double generarNumeroAzar(double limInf, double limSup);
-punto_t generarPunto(double limInf_X, double limSup_X, double limInf_Y, double limSup_Y, double limInf_Z, double limSup_Z);
+punto_t generarPunto(double* limX, double* limY, double* limZ);
+caja_t generarCaja(double limInf_X, double limSup_X, double limInf_Y, double limSup_Y, double limInf_Z, double limSup_Z);
+void calcularVolumenCaja(caja_t* caja);
+double calcularAreaRectangulo(double largo, double ancho);
+double calcularVolumenRevolucion(int num_puntos, caja_t caja, char eje);
 int main(int argc, char** argv){
 	
 	//Inicializamos la semilla
@@ -74,11 +89,24 @@ int main(int argc, char** argv){
 		setlocale(LC_NUMERIC, "es_ES.UTF-8");
 	#endif
 	
-	//Pruebas
-	punto_t punto = generarPunto(-LIMITE, LIMITE, -1, 1, -1, 1);
-	printf("x: %lf\t, y: %lf\t, z: %lf\n", punto.x, punto.y, punto.z);
+	//Inicializamos las variables
+	caja_t cajaX = generarCaja(-LIMITE, LIMITE, -1, 1, -1, 1);
+	caja_t cajaY = generarCaja(-LIMITE, LIMITE, 0, 1, -LIMITE, LIMITE);
+	double volumenEstimadoX = 0.0;
+	double volumenEstimadoY = 0.0;
 	
+	//Calculamos los volumenes de las cajas
+	calcularVolumenCaja(&cajaX);
+	calcularVolumenCaja(&cajaY);
 	
+	//Calculamos varios volumenes y sus respectivos errores relativos
+	for(int num_puntos = 100; num_puntos <= pow(10, 7); num_puntos *= 10){
+		volumenEstimadoX = calcularVolumenRevolucion(num_puntos, cajaX, 'X');
+		volumenEstimadoY = calcularVolumenRevolucion(num_puntos, cajaY, 'Y');
+		printf("Numero de puntos: %d; Volumen estimado X: %lf; Volumen estimado Y: %lf\n", num_puntos, volumenEstimadoX, volumenEstimadoY);
+	}
+	
+	return 0;
 }
 
 double generarNumeroAzar(double limInf, double limSup){
@@ -88,14 +116,62 @@ double generarNumeroAzar(double limInf, double limSup){
 	return ((randLocal / RAND_MAX) * (limSup - limInf) + limInf);
 }
 
-punto_t generarPunto(double limInf_X, double limSup_X, double limInf_Y, double limSup_Y, double limInf_Z, double limSup_Z){
+punto_t generarPunto(double* limX, double* limY, double* limZ){
 	
 	//Generamos un punto con las especificaciones recibidas
 	punto_t punto;
-	punto.x = generarNumeroAzar(limInf_X, limSup_X);
-	punto.y = generarNumeroAzar(limInf_Y, limSup_Y);
-	punto.z = generarNumeroAzar(limInf_Z, limSup_Z);
+	punto.x = generarNumeroAzar(limX[LIMITE_INF], limX[LIMITE_SUP]);
+	punto.y = generarNumeroAzar(limY[LIMITE_INF], limY[LIMITE_SUP]);
+	punto.z = generarNumeroAzar(limZ[LIMITE_INF], limZ[LIMITE_SUP]);
 	
 	//Devolvemos el punto
 	return punto;
+}
+
+caja_t generarCaja(double limInf_X, double limSup_X, double limInf_Y, double limSup_Y, double limInf_Z, double limSup_Z){
+	
+	//Generamos la caja alrededor del eje X
+	caja_t caja;
+	caja.limX[LIMITE_INF] = limInf_X;
+	caja.limX[LIMITE_SUP] = limSup_X;
+	caja.limY[LIMITE_INF] = limInf_Y;
+	caja.limY[LIMITE_SUP] = limSup_Y;
+	caja.limZ[LIMITE_INF] = limInf_Z;
+	caja.limZ[LIMITE_SUP] = limSup_Z;
+	caja.volumen = 0;
+	
+	//Devolvemos la caja
+	return caja;
+}
+
+void calcularVolumenCaja(caja_t* caja){
+	double areaBase = calcularAreaRectangulo(caja->limX[LIMITE_SUP] - caja->limX[LIMITE_INF], caja->limZ[LIMITE_SUP] - caja->limZ[LIMITE_INF]);
+	double h = caja->limY[LIMITE_SUP] - caja->limY[LIMITE_INF];
+	caja->volumen = areaBase * h;
+}
+
+double calcularAreaRectangulo(double largo, double ancho){
+	return largo * ancho;
+}
+
+double calcularVolumenRevolucion(int num_puntos, caja_t caja, char eje){
+	//definimos las variables
+	int puntosDentro = 0;
+	
+	//Comprobación de errores
+	if(!(eje == 'X' || eje == 'x' || eje == 'Y' || eje == 'y')){
+		fprintf(stderr, "Error en la seleccion del eje");
+		return 0.0;
+	}
+	
+	for(int i = 0; i < num_puntos; i++){
+		punto_t punto = generarPunto(caja.limX, caja.limY, caja.limZ);
+		if(eje == 'X' || eje == 'x'){
+			puntosDentro += (pow(punto.y, 2) + pow(punto.z, 2) <= exp(-2*pow(punto.x, 2)));
+		}else{
+			puntosDentro += (punto.y <= 1/exp(pow(punto.x, 2) + pow(punto.z, 2)));
+		}
+	}
+	
+	return caja.volumen * ((double)puntosDentro/num_puntos);
 }
