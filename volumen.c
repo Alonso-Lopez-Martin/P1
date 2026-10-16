@@ -94,17 +94,41 @@ int main(int argc, char** argv){
 	caja_t cajaY = generarCaja(-LIMITE, LIMITE, 0, 1, -LIMITE, LIMITE);
 	double volumenEstimadoX = 0.0;
 	double volumenEstimadoY = 0.0;
+	FILE* fd_x = NULL;
+	FILE* fd_y = NULL;
 	
 	//Calculamos los volumenes de las cajas
 	calcularVolumenCaja(&cajaX);
 	calcularVolumenCaja(&cajaY);
 	
+	//Calculamos los volúmenes análiticos
+	double volumenAnaliticoX = M_PI * sqrt(M_PI/2);
+	double volumenAnaliticoY = M_PI;
+	
+	//Creamos un archivo para guardar los datos y comprobamos errores
+	fd_x = fopen("resultados_volumen_revolucion_x.csv", "w");
+	if(fd_x == NULL){
+		fprintf(stderr, "Error al crear el fichero del eje X");
+		return 1;
+	}
+	fd_y = fopen("resultados_volumen_revolucion_y.csv", "w");
+	if(fd_y == NULL){
+		fprintf(stderr, "Error al crear el fichero del eje Y");
+		return 1;
+	}
+	
 	//Calculamos varios volumenes y sus respectivos errores relativos
 	for(int num_puntos = 100; num_puntos <= pow(10, 7); num_puntos *= 10){
 		volumenEstimadoX = calcularVolumenRevolucion(num_puntos, cajaX, 'X');
 		volumenEstimadoY = calcularVolumenRevolucion(num_puntos, cajaY, 'Y');
-		printf("Numero de puntos: %d; Volumen estimado X: %lf; Volumen estimado Y: %lf\n", num_puntos, volumenEstimadoX, volumenEstimadoY);
+		fprintf(fd_x, "Numero de puntos: %d\tVolumen de Revolucion Estimado: %lf\tVolumen de Revolucion Analitico: %lf\tError Relativo: %lf\n", num_puntos, volumenEstimadoX, volumenAnaliticoX, fabs(volumenAnaliticoX-volumenEstimadoX));
+		fprintf(fd_y, "Numero de puntos: %d\tVolumen de Revolucion Estimado: %lf\tVolumen de Revolucion Analitico: %lf\tError Relativo: %lf\n", num_puntos, volumenEstimadoY, volumenAnaliticoY, fabs(volumenAnaliticoY-volumenEstimadoY));
 	}
+	
+	fclose(fd_x);
+	fclose(fd_y);
+	
+	fprintf(stdout, "El programa se ha ejecutado correctamente...\n");
 	
 	return 0;
 }
